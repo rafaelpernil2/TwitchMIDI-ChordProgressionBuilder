@@ -1,0 +1,82 @@
+import type { ProgressionItem } from "../lib/types";
+
+interface Props {
+  item: ProgressionItem;
+  index: number;
+  isPlaying: boolean;
+  totalItems: number;
+  onRemove: () => void;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
+  onDragStart: (e: DragEvent, index: number) => void;
+  onDragOver: (e: DragEvent) => void;
+  onDrop: (e: DragEvent, index: number) => void;
+}
+
+export default function ChordCard({
+  item,
+  index,
+  isPlaying,
+  totalItems,
+  onRemove,
+  onMoveLeft,
+  onMoveRight,
+  onDragStart,
+  onDragOver,
+  onDrop,
+}: Props) {
+  const label =
+    item.type === "rest"
+      ? "rest"
+      : `${item.root ?? ""}${item.quality ?? ""}`;
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e as unknown as DragEvent, index)}
+      onDragOver={(e) => onDragOver(e as unknown as DragEvent)}
+      onDrop={(e) => onDrop(e as unknown as DragEvent, index)}
+      class={`group relative flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl cursor-grab active:cursor-grabbing transition-all select-none ${
+        isPlaying
+          ? "bg-violet-500 text-white shadow-lg shadow-violet-500/50 scale-110 ring-2 ring-violet-300/50"
+          : item.type === "rest"
+            ? "bg-[#1a1a2e]/80 text-gray-500 border-2 border-dashed border-gray-700"
+            : "bg-[#1a1a2e] text-gray-100 border border-gray-700/60 hover:border-violet-500/40 hover:shadow-md hover:shadow-violet-500/10"
+      }`}
+    >
+      <button
+        onClick={onRemove}
+        class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-400 shadow-lg"
+        aria-label="Remove chord"
+      >
+        x
+      </button>
+      <span class="text-sm font-bold whitespace-nowrap">{label}</span>
+      <span
+        class={`text-xs font-medium ${
+          isPlaying ? "text-violet-200" : "text-gray-500"
+        }`}
+      >
+        {item.beats} {item.beats === 1 ? "beat" : "beats"}
+      </span>
+      <div class="flex gap-0.5 sm:hidden">
+        <button
+          onClick={onMoveLeft}
+          disabled={index === 0}
+          class="text-xs px-1.5 text-gray-500 hover:text-white disabled:opacity-20"
+          aria-label="Move left"
+        >
+          &larr;
+        </button>
+        <button
+          onClick={onMoveRight}
+          disabled={index === totalItems - 1}
+          class="text-xs px-1.5 text-gray-500 hover:text-white disabled:opacity-20"
+          aria-label="Move right"
+        >
+          &rarr;
+        </button>
+      </div>
+    </div>
+  );
+}
