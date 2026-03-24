@@ -5,6 +5,8 @@ import ChordCard from "./ChordCard";
 interface Props {
   items: ProgressionItem[];
   currentPlayingIndex: number;
+  editingIndex: number | null;
+  onSelect: (index: number) => void;
   onReorder: (from: number, to: number) => void;
   onRemove: (index: number) => void;
 }
@@ -12,6 +14,8 @@ interface Props {
 export default function ChordStrip({
   items,
   currentPlayingIndex,
+  editingIndex,
+  onSelect,
   onReorder,
   onRemove,
 }: Props) {
@@ -61,6 +65,11 @@ export default function ChordStrip({
     <div class="space-y-2">
       <label class="text-sm font-semibold text-pink-300 uppercase tracking-wider">
         Progression ({items.length} {items.length === 1 ? "chord" : "chords"})
+        {editingIndex !== null && (
+          <span class="text-amber-300 ml-2 normal-case tracking-normal">
+            — click a chord to edit it
+          </span>
+        )}
       </label>
       <div class="flex flex-wrap gap-2.5 p-4 bg-[#07070d] rounded-xl border border-gray-800/60 min-h-[70px]">
         {items.map((item, i) => (
@@ -69,7 +78,9 @@ export default function ChordStrip({
             item={item}
             index={i}
             isPlaying={currentPlayingIndex === i}
+            isEditing={editingIndex === i}
             totalItems={items.length}
+            onSelect={() => onSelect(i)}
             onRemove={() => onRemove(i)}
             onMoveLeft={() => handleMoveLeft(i)}
             onMoveRight={() => handleMoveRight(i)}

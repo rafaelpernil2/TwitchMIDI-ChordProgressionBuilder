@@ -27,32 +27,85 @@ export default function App() {
   const [bpm, setBpm] = useState(120);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const output = formatSendloop(timeSignature, items);
+  const isEditing = editingIndex !== null;
+  const editingItem = isEditing ? items[editingIndex] : null;
 
-  function addChord() {
-    if (!selectedNote || selectedQuality === null) return;
-    const newItem: ProgressionItem = {
-      id: generateId(),
-      type: "chord",
-      root: selectedNote,
-      quality: selectedQuality,
-      beats,
-    };
-    setItems((prev) => [...prev, newItem]);
+  function selectForEditing(index: number) {
+    const item = items[index];
+    if (item.type === "rest") {
+      setEditingIndex(index);
+      setSelectedNote(null);
+      setSelectedQuality(null);
+      setBeats(item.beats);
+    } else {
+      setEditingIndex(index);
+      setSelectedNote(item.root ?? null);
+      setSelectedQuality(item.quality ?? null);
+      setBeats(item.beats);
+    }
   }
 
-  function addRest() {
-    const newItem: ProgressionItem = {
-      id: generateId(),
-      type: "rest",
-      beats,
-    };
-    setItems((prev) => [...prev, newItem]);
+  function cancelEditing() {
+    setEditingIndex(null);
+    setSelectedNote(null);
+    setSelectedQuality(null);
+    setBeats(4);
+  }
+
+  function addOrUpdateChord() {
+    if (!selectedNote || selectedQuality === null) return;
+
+    if (isEditing) {
+      setItems((prev) =>
+        prev.map((item, i) =>
+          i === editingIndex
+            ? { ...item, type: "chord", root: selectedNote, quality: selectedQuality, beats }
+            : item
+        )
+      );
+      setEditingIndex(null);
+    } else {
+      const newItem: ProgressionItem = {
+        id: generateId(),
+        type: "chord",
+        root: selectedNote,
+        quality: selectedQuality,
+        beats,
+      };
+      setItems((prev) => [...prev, newItem]);
+    }
+  }
+
+  function addOrUpdateRest() {
+    if (isEditing) {
+      setItems((prev) =>
+        prev.map((item, i) =>
+          i === editingIndex
+            ? { ...item, type: "rest", root: undefined, quality: undefined, beats }
+            : item
+        )
+      );
+      setEditingIndex(null);
+    } else {
+      const newItem: ProgressionItem = {
+        id: generateId(),
+        type: "rest",
+        beats,
+      };
+      setItems((prev) => [...prev, newItem]);
+    }
   }
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
+    if (editingIndex === index) {
+      cancelEditing();
+    } else if (editingIndex !== null && index < editingIndex) {
+      setEditingIndex(editingIndex - 1);
+    }
   }
 
   function reorderItems(from: number, to: number) {
@@ -62,12 +115,20 @@ export default function App() {
       next.splice(to, 0, moved);
       return next;
     });
+    if (editingIndex !== null) {
+      if (editingIndex === from) {
+        setEditingIndex(to);
+      } else if (from < editingIndex && to >= editingIndex) {
+        setEditingIndex(editingIndex - 1);
+      } else if (from > editingIndex && to <= editingIndex) {
+        setEditingIndex(editingIndex + 1);
+      }
+    }
   }
 
   function clearAll() {
     setItems([]);
-    setSelectedNote(null);
-    setSelectedQuality(null);
+    cancelEditing();
   }
 
   const handleCurrentItem = useCallback((index: number) => {
@@ -88,6 +149,11 @@ export default function App() {
     setIsPlaying(false);
   }
 
+  const chordLabel =
+    selectedNote && selectedQuality !== null
+      ? `${selectedNote}${selectedQuality}`
+      : "Chord";
+
   return (
     <div class="space-y-5">
       {/* Time Signature */}
@@ -96,7 +162,32 @@ export default function App() {
       </section>
 
       {/* Chord Builder */}
-      <section class="bg-[#12121e] rounded-2xl p-5 border border-emerald-500/10 shadow-lg shadow-emerald-500/5 space-y-4">
+      <section
+        class={`bg-[#12121e] rounded-2xl p-5 space-y-4 border shadow-lg transition-all ${
+          isEditing
+            ? "border-amber-500/30 shadow-amber-500/5"
+            : "border-emerald-500/10 shadow-emerald-500/5"
+        }`}
+      >
+        {isEditing && (
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-semibold text-amber-300 uppercase tracking-wider">
+              Editing chord {editingIndex! + 1}
+              {editingItem?.type === "rest"
+                ? " (rest)"
+                : editingItem?.root
+                  ? ` (${editingItem.root}${editingItem.quality ?? ""})`
+                  : ""}
+            </span>
+            <button
+              onClick={cancelEditing}
+              class="text-xs font-bold text-gray-500 hover:text-white px-2 py-1 rounded bg-[#1a1a2e] hover:bg-gray-800 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <NoteSelector
           selected={selectedNote}
           useFlats={useFlats}
@@ -114,17 +205,25 @@ export default function App() {
             <BeatDurationSelector value={beats} onChange={setBeats} />
             <div class="flex gap-2">
               <button
-                onClick={addChord}
+                onClick={addOrUpdateChord}
                 disabled={!selectedNote || selectedQuality === null}
-                class="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
+                class={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none ${
+                  isEditing
+                    ? "bg-amber-500 text-black hover:bg-amber-400 shadow-amber-500/20"
+                    : "bg-violet-600 text-white hover:bg-violet-500 shadow-violet-600/20"
+                }`}
               >
-                + Add {selectedNote && selectedQuality !== null ? `${selectedNote}${selectedQuality}` : "Chord"}
+                {isEditing ? `Update ${chordLabel}` : `+ Add ${chordLabel}`}
               </button>
               <button
-                onClick={addRest}
-                class="px-4 py-2.5 rounded-lg bg-[#1a1a2e] text-gray-400 text-sm font-bold hover:bg-gray-800 hover:text-white border-2 border-dashed border-gray-700/50 hover:border-gray-600 transition-all"
+                onClick={addOrUpdateRest}
+                class={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                  isEditing
+                    ? "bg-amber-500/20 text-amber-300 border-2 border-dashed border-amber-500/40 hover:border-amber-400"
+                    : "bg-[#1a1a2e] text-gray-400 hover:bg-gray-800 hover:text-white border-2 border-dashed border-gray-700/50 hover:border-gray-600"
+                }`}
               >
-                + Rest
+                {isEditing ? "Set Rest" : "+ Rest"}
               </button>
             </div>
           </div>
@@ -136,6 +235,8 @@ export default function App() {
         <ChordStrip
           items={items}
           currentPlayingIndex={currentPlayingIndex}
+          editingIndex={editingIndex}
+          onSelect={selectForEditing}
           onReorder={reorderItems}
           onRemove={removeItem}
         />
