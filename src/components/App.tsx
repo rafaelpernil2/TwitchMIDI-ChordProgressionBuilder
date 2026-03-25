@@ -12,7 +12,6 @@ import ChordStrip from "./ChordStrip";
 import OutputBar from "./OutputBar";
 import PlaybackControls from "./PlaybackControls";
 import LanguageSwitcher from "./LanguageSwitcher";
-import DebugOverlay from "./DebugOverlay";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -354,7 +353,6 @@ export default function App() {
           />
         </section>
       </div>
-      <DebugOverlay />
     </I18nContext.Provider>
   );
 }
