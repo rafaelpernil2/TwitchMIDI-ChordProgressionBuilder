@@ -73,7 +73,7 @@ export default function OutputBar({ output, onCommandChange }: Props) {
       <label class="text-sm font-semibold text-rose-300 uppercase tracking-wider">
         {t.output}
       </label>
-      <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -83,7 +83,7 @@ export default function OutputBar({ output, onCommandChange }: Props) {
           onBlur={handleBlur}
           onInput={(e) => handleInput((e.target as HTMLInputElement).value)}
           onKeyDown={handleKeyDown}
-          class={`flex-1 px-4 py-2.5 rounded-lg bg-[#07070d] font-mono text-sm overflow-x-auto whitespace-nowrap focus:outline-none transition-all ${
+          class={`flex-1 min-w-0 px-4 py-2.5 rounded-lg bg-[#07070d] font-mono text-sm overflow-x-auto whitespace-nowrap focus:outline-none transition-all ${
             parseError
               ? "border-2 border-red-500/60 text-red-300"
               : isEditing
@@ -92,26 +92,28 @@ export default function OutputBar({ output, onCommandChange }: Props) {
           }`}
           spellcheck={false}
         />
-        <button
-          onClick={handleCopy}
-          disabled={!output}
-          class={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
-            copied
-              ? "bg-emerald-500 text-white"
-              : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20"
-          } disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none`}
-          title={t.copyWithCommand}
-        >
-          {copied ? t.copied : t.copy}
-        </button>
-        <button
-          onClick={handleCopyRaw}
-          disabled={!output}
-          class="px-4 py-2.5 rounded-lg bg-[#1a1a2e] text-gray-300 text-sm font-bold hover:bg-gray-800 hover:text-white border border-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all whitespace-nowrap"
-          title={t.copyChordsOnly}
-        >
-          {t.raw}
-        </button>
+        <div class="flex gap-2 shrink-0">
+          <button
+            onClick={handleCopy}
+            disabled={!output}
+            class={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+              copied
+                ? "bg-emerald-500 text-white"
+                : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20"
+            } disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none`}
+            title={t.copyWithCommand}
+          >
+            {copied ? t.copied : t.copy}
+          </button>
+          <button
+            onClick={handleCopyRaw}
+            disabled={!output}
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg bg-[#1a1a2e] text-gray-300 text-sm font-bold hover:bg-gray-800 hover:text-white border border-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+            title={t.copyChordsOnly}
+          >
+            {t.raw}
+          </button>
+        </div>
       </div>
     </div>
   );
