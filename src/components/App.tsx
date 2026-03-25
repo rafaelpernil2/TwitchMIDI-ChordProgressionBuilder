@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
-import { formatSendloop } from "../lib/formatter";
+import { formatSendloop, parseSendloop } from "../lib/formatter";
 import { startPlayback, stopPlayback } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
@@ -30,6 +30,21 @@ export default function App() {
     denominator: 4,
   });
   const [items, setItems] = useState<ProgressionItem[]>([]);
+
+  // Load initial state from URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    try {
+      const result = parseSendloop(decodeURIComponent(hash));
+      if (result && result.items.length > 0) {
+        setTimeSignature(result.timeSignature);
+        setItems(result.items);
+      }
+    } catch {
+      // ignore invalid hash
+    }
+  }, []);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
   const [beats, setBeats] = useState(4);
@@ -41,6 +56,15 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
 
   const output = formatSendloop(timeSignature, items);
+
+  // Sync output to URL hash
+  useEffect(() => {
+    const hash = output ? encodeURIComponent(output) : "";
+    const newUrl = hash
+      ? `${window.location.pathname}${window.location.search}#${hash}`
+      : `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [output]);
   const isEditing = editingIndex !== null;
   const editingItem = isEditing ? items[editingIndex] : null;
 
@@ -159,6 +183,15 @@ export default function App() {
   async function handleStop() {
     await stopPlayback(handleCurrentItem);
     setIsPlaying(false);
+  }
+
+  function handleCommandChange(command: string) {
+    const result = parseSendloop(command);
+    if (result) {
+      setTimeSignature(result.timeSignature);
+      setItems(result.items);
+      cancelEditing();
+    }
   }
 
   const chordLabel =
@@ -284,7 +317,7 @@ export default function App() {
 
         {/* Output & Playback */}
         <section class="bg-[#12121e] rounded-2xl p-5 border border-rose-500/10 shadow-lg shadow-rose-500/5 space-y-2">
-          <OutputBar output={output} />
+          <OutputBar output={output} onCommandChange={handleCommandChange} />
           <PlaybackControls
             bpm={bpm}
             isPlaying={isPlaying}

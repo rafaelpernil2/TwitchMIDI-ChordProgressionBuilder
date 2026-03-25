@@ -37,7 +37,7 @@ export default function PlaybackControls({
       <button
         onClick={isPlaying ? onStop : onPlay}
         disabled={disabled}
-        class={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none ${
+        class={`w-28 py-2.5 rounded-lg text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none ${
           isPlaying
             ? "bg-red-500 text-white hover:bg-red-400 shadow-lg shadow-red-500/30"
             : "bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30"

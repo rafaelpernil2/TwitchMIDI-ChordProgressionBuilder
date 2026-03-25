@@ -1,18 +1,62 @@
-import { useState } from "preact/hooks";
+import { useState, useRef, useEffect } from "preact/hooks";
 import { useI18n } from "../lib/i18n";
 
 interface Props {
   output: string;
+  onCommandChange: (command: string) => void;
 }
 
-export default function OutputBar({ output }: Props) {
+export default function OutputBar({ output, onCommandChange }: Props) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [parseError, setParseError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync edit value when output changes externally (and not actively editing)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(output ? `!sendloop ${output}` : "");
+    }
+  }, [output, isEditing]);
+
+  function handleFocus() {
+    setIsEditing(true);
+    setEditValue(output ? `!sendloop ${output}` : "");
+    setParseError(false);
+  }
+
+  function handleBlur() {
+    setIsEditing(false);
+    if (!parseError && editValue.trim()) {
+      onCommandChange(editValue);
+    }
+    setParseError(false);
+  }
+
+  function handleInput(value: string) {
+    setEditValue(value);
+    setParseError(false);
+    onCommandChange(value);
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      (e.target as HTMLInputElement).blur();
+    }
+    if (e.key === "Escape") {
+      setEditValue(output ? `!sendloop ${output}` : "");
+      setParseError(false);
+      setIsEditing(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  }
 
   async function handleCopy() {
-    if (!output) return;
-    const sendloopCommand = `!sendloop ${output}`;
-    await navigator.clipboard.writeText(sendloopCommand);
+    const text = output ? `!sendloop ${output}` : "";
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -30,18 +74,24 @@ export default function OutputBar({ output }: Props) {
         {t.output}
       </label>
       <div class="flex gap-2">
-        <div class="flex-1 px-4 py-2.5 rounded-lg bg-[#07070d] border border-gray-800/60 font-mono text-sm text-gray-100 overflow-x-auto whitespace-nowrap">
-          {output ? (
-            <>
-              <span class="text-violet-400 font-bold">!sendloop </span>
-              <span class="text-emerald-300">{output}</span>
-            </>
-          ) : (
-            <span class="text-gray-600 italic">
-              {t.outputPlaceholder}
-            </span>
-          )}
-        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={isEditing ? editValue : (output ? `!sendloop ${output}` : "")}
+          placeholder={t.outputPlaceholder}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onInput={(e) => handleInput((e.target as HTMLInputElement).value)}
+          onKeyDown={handleKeyDown}
+          class={`flex-1 px-4 py-2.5 rounded-lg bg-[#07070d] font-mono text-sm overflow-x-auto whitespace-nowrap focus:outline-none transition-all ${
+            parseError
+              ? "border-2 border-red-500/60 text-red-300"
+              : isEditing
+                ? "border-2 border-rose-500/40 text-white ring-1 ring-rose-500/20"
+                : "border border-gray-800/60 text-gray-100"
+          }`}
+          spellcheck={false}
+        />
         <button
           onClick={handleCopy}
           disabled={!output}
