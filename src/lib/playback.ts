@@ -5,6 +5,7 @@ let Tone: typeof import("tone") | null = null;
 let sampler: import("tone").Sampler | null = null;
 let samplerReady = false;
 let toneLoadPromise: Promise<void> | null = null;
+let audioUnlocked = false;
 
 const PIANO_SAMPLES: Record<string, string> = {
   A0: "A0.mp3",
@@ -39,9 +40,9 @@ const PIANO_SAMPLES: Record<string, string> = {
   C8: "C8.mp3",
 };
 
-// Preload Tone.js module and create sampler (does NOT start AudioContext).
-// Safe to call multiple times — returns the same promise.
-export function preloadTone(): Promise<void> {
+// Load Tone.js module eagerly (call on mount, not on gesture).
+// This does NOT start the AudioContext — just loads the JS + creates the sampler.
+export function loadTone(): Promise<void> {
   if (!toneLoadPromise) {
     toneLoadPromise = (async () => {
       Tone = await import("tone");
@@ -58,29 +59,13 @@ export function preloadTone(): Promise<void> {
   return toneLoadPromise;
 }
 
-// Resume or unlock the AudioContext. Call from a user gesture handler.
-// Uses the raw AudioContext API so it works even if Tone.js hasn't loaded yet.
-export function unlockAudio(): void {
-  // If Tone is loaded, resume its context
-  if (Tone) {
-    const ctx = Tone.getContext().rawContext as AudioContext;
-    if (ctx.state === "suspended") {
-      ctx.resume();
-    }
-    return;
-  }
-  // If Tone isn't loaded yet, create/resume a raw AudioContext
-  // that Tone will inherit when it loads (same global default)
-  const AC = window.AudioContext || (window as any).webkitAudioContext;
-  if (AC) {
-    const ctx = new AC();
-    // Play silent buffer to fully unlock on iOS
-    const buf = ctx.createBuffer(1, 1, 22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    src.start(0);
-  }
+// Unlock/resume the AudioContext. MUST be called synchronously from a
+// user gesture handler (click/touchend). On iOS Safari, the AudioContext
+// starts suspended and can only be resumed inside a user gesture.
+export async function unlockAudio(): Promise<void> {
+  if (!Tone) return;
+  await Tone.start();
+  audioUnlocked = true;
 }
 
 export async function startPlayback(
@@ -89,14 +74,10 @@ export async function startPlayback(
   bpm: number,
   onCurrentItem: (index: number) => void
 ): Promise<void> {
-  // Ensure Tone.js is loaded (may already be done via preload)
-  await preloadTone();
+  // Ensure Tone is loaded
+  await loadTone();
 
-  // Tone.start() resumes the AudioContext. On iOS Safari this only
-  // works when called inside a user-gesture call stack. Because
-  // preloadTone() may resolve immediately (already cached), the
-  // await does not necessarily break the gesture chain. As a fallback,
-  // iOS will unlock the context on the next tap if this one fails.
+  // Resume AudioContext (may already be running)
   await Tone!.start();
 
   // Wait for piano samples to load

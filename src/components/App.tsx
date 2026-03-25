@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop, parseSendloop } from "../lib/formatter";
-import { startPlayback, stopPlayback, preloadTone, unlockAudio } from "../lib/playback";
+import { startPlayback, stopPlayback, loadTone, unlockAudio } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
 import TimeSignatureSelector from "./TimeSignatureSelector";
@@ -24,19 +24,22 @@ export default function App() {
   useEffect(() => {
     setLocale(detectLocale());
 
-    // On first interaction: unlock audio (synchronous, iOS requirement)
-    // and start loading Tone.js + piano samples in the background.
-    const preload = () => {
+    // Start loading Tone.js immediately so it's ready before the
+    // user interacts. This does NOT create the AudioContext yet.
+    loadTone();
+
+    // On first user gesture, unlock the AudioContext (iOS Safari
+    // requires resume() to be called within a user gesture).
+    const unlock = () => {
       unlockAudio();
-      preloadTone();
-      document.removeEventListener("touchstart", preload);
-      document.removeEventListener("mousedown", preload);
+      document.removeEventListener("touchend", unlock);
+      document.removeEventListener("click", unlock);
     };
-    document.addEventListener("touchstart", preload);
-    document.addEventListener("mousedown", preload);
+    document.addEventListener("touchend", unlock);
+    document.addEventListener("click", unlock);
     return () => {
-      document.removeEventListener("touchstart", preload);
-      document.removeEventListener("mousedown", preload);
+      document.removeEventListener("touchend", unlock);
+      document.removeEventListener("click", unlock);
     };
   }, []);
 
@@ -191,10 +194,11 @@ export default function App() {
 
   async function handlePlay() {
     if (items.length === 0) return;
-    // Unlock audio synchronously in the click gesture — iOS Safari
-    // requires AudioContext.resume() in the same call stack as
-    // the user interaction, before any awaits.
-    unlockAudio();
+    // Unlock/resume AudioContext within the click gesture (iOS requirement).
+    // unlockAudio calls Tone.start() which resumes the suspended context.
+    // Because Tone.js was loaded on mount (not on click), Tone.start()
+    // operates on an existing context — no async import needed here.
+    await unlockAudio();
     setIsPlaying(true);
     try {
       await startPlayback(items, timeSignature, bpm, handleCurrentItem);
