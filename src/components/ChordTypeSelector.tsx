@@ -6,6 +6,7 @@ interface Props {
   selected: string | null;
   selectedNote: string | null;
   editingIndex: number | null;
+  resetKey: number;
   onSelect: (suffix: string) => void;
 }
 
@@ -13,6 +14,7 @@ export default function ChordTypeSelector({
   selected,
   selectedNote,
   editingIndex,
+  resetKey,
   onSelect,
 }: Props) {
   const { t } = useI18n();
@@ -20,7 +22,7 @@ export default function ChordTypeSelector({
 
   useEffect(() => {
     setSearch("");
-  }, [editingIndex]);
+  }, [editingIndex, resetKey]);
 
   const filtered = search
     ? CHORD_DEFINITIONS.filter(

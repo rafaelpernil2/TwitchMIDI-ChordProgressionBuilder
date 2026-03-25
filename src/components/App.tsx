@@ -38,6 +38,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [resetKey, setResetKey] = useState(0);
 
   const output = formatSendloop(timeSignature, items);
   const isEditing = editingIndex !== null;
@@ -87,6 +88,7 @@ export default function App() {
       };
       setItems((prev) => [...prev, newItem]);
     }
+    setResetKey((k) => k + 1);
   }
 
   function addOrUpdateRest() {
@@ -223,6 +225,7 @@ export default function App() {
               selected={selectedQuality}
               selectedNote={selectedNote}
               editingIndex={editingIndex}
+              resetKey={resetKey}
               onSelect={setSelectedQuality}
             />
             <div class="space-y-4">
