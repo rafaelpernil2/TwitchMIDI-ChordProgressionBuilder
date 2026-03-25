@@ -51,6 +51,9 @@ const translations = {
     raw: "Raw",
     copyWithCommand: "Copy with !sendloop command",
     copyChordsOnly: "Copy chords only",
+    share: "Share",
+    shareCopied: "Link copied!",
+    shareLoop: "Copy link to share this loop",
 
     // Chord Categories
     categories: {
@@ -119,6 +122,9 @@ const translations = {
     raw: "Raw",
     copyWithCommand: "Copiar con el comando !sendloop",
     copyChordsOnly: "Copiar solo los acordes",
+    share: "Compartir",
+    shareCopied: "Enlace copiado!",
+    shareLoop: "Copiar enlace para compartir este loop",
 
     // Chord Categories
     categories: {

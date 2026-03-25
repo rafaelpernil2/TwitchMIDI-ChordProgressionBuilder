@@ -9,6 +9,7 @@ interface Props {
 export default function OutputBar({ output, onCommandChange }: Props) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [parseError, setParseError] = useState(false);
@@ -68,6 +69,13 @@ export default function OutputBar({ output, onCommandChange }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  async function handleShare() {
+    if (!output) return;
+    await navigator.clipboard.writeText(window.location.href);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  }
+
   return (
     <div class="space-y-2">
       <label class="text-sm font-semibold text-rose-300 uppercase tracking-wider">
@@ -112,6 +120,18 @@ export default function OutputBar({ output, onCommandChange }: Props) {
             title={t.copyChordsOnly}
           >
             {t.raw}
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={!output}
+            class={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+              shareCopied
+                ? "bg-emerald-500 text-white"
+                : "bg-rose-600 text-white hover:bg-rose-500 shadow-lg shadow-rose-600/20"
+            } disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none`}
+            title={t.shareLoop}
+          >
+            {shareCopied ? t.shareCopied : (<span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>{t.share}</span>)}
           </button>
         </div>
       </div>
