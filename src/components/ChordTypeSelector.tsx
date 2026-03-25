@@ -50,7 +50,7 @@ export default function ChordTypeSelector({
         {categories.map((cat) => (
           <div key={cat}>
             <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">
-              {cat}
+              {t.categories[cat] ?? cat}
             </div>
             <div class="flex flex-wrap gap-1.5">
               {filtered

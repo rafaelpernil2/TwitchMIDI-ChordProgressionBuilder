@@ -52,6 +52,19 @@ const translations = {
     copyWithCommand: "Copy with !sendloop command",
     copyChordsOnly: "Copy chords only",
 
+    // Chord Categories
+    categories: {
+      Triads: "Triads",
+      Suspended: "Suspended",
+      Sixths: "Sixths",
+      Sevenths: "Sevenths",
+      "Sus Sevenths": "Sus Sevenths",
+      Ninths: "Ninths",
+      Altered: "Altered",
+      Elevenths: "Elevenths",
+      Thirteenths: "Thirteenths",
+    } as Record<string, string>,
+
     // Playback
     play: "Play",
     stop: "Stop",
@@ -106,6 +119,19 @@ const translations = {
     raw: "Raw",
     copyWithCommand: "Copiar con el comando !sendloop",
     copyChordsOnly: "Copiar solo los acordes",
+
+    // Chord Categories
+    categories: {
+      Triads: "Triadas",
+      Suspended: "Suspendidos",
+      Sixths: "Sextas",
+      Sevenths: "Septimas",
+      "Sus Sevenths": "Septimas Sus",
+      Ninths: "Novenas",
+      Altered: "Alterados",
+      Elevenths: "Oncenas",
+      Thirteenths: "Trecenas",
+    } as Record<string, string>,
 
     // Playback
     play: "Reproducir",
