@@ -21,8 +21,20 @@ export default function PlaybackControls({
 
   return (
     <div class="flex items-center gap-3 flex-wrap">
-      <label class="text-sm font-semibold text-orange-300 uppercase tracking-wider whitespace-nowrap">
-        BPM: <span class="text-white">{bpm}</span>
+      <label class="text-sm font-semibold text-orange-300 uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+        BPM:
+        <input
+          type="number"
+          min="35"
+          max="400"
+          value={bpm}
+          onInput={(e) => {
+            const val = parseInt((e.target as HTMLInputElement).value);
+            if (!isNaN(val)) onBpmChange(Math.max(35, Math.min(400, val)));
+          }}
+          class="w-12 bg-transparent text-white text-sm font-bold text-center focus:outline-none focus:border-b focus:border-orange-400"
+          style="-moz-appearance: textfield; appearance: textfield;"
+        />
       </label>
       <input
         type="range"
