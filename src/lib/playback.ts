@@ -4,29 +4,7 @@ import { chordToNotes } from "./chords";
 let Tone: typeof import("tone") | null = null;
 let sampler: import("tone").Sampler | null = null;
 let samplerReady = false;
-let toneInitialized = false;
-let sharedAudioContext: AudioContext | null = null;
-
-// Create and resume an AudioContext synchronously within a user gesture.
-// iOS Safari requires this to happen in the same call stack as the
-// touch/click event — no awaits before this call.
-export function warmUpAudioContext(): void {
-  if (sharedAudioContext) {
-    // Context exists but may be suspended (iOS suspends on page visibility change)
-    if (sharedAudioContext.state === "suspended") {
-      sharedAudioContext.resume();
-    }
-    return;
-  }
-  const AC = window.AudioContext || (window as any).webkitAudioContext;
-  sharedAudioContext = new AC();
-  // Play a silent buffer to fully unlock audio on iOS
-  const buffer = sharedAudioContext.createBuffer(1, 1, 22050);
-  const source = sharedAudioContext.createBufferSource();
-  source.buffer = buffer;
-  source.connect(sharedAudioContext.destination);
-  source.start(0);
-}
+let toneLoadPromise: Promise<void> | null = null;
 
 const PIANO_SAMPLES: Record<string, string> = {
   A0: "A0.mp3",
@@ -61,31 +39,48 @@ const PIANO_SAMPLES: Record<string, string> = {
   C8: "C8.mp3",
 };
 
-// Load Tone.js and wire it to the already-unlocked AudioContext.
-export async function initTone(): Promise<void> {
-  if (toneInitialized) return;
-  toneInitialized = true;
-  Tone = await import("tone");
-  // If we already unlocked an AudioContext, hand it to Tone.js
-  if (sharedAudioContext) {
-    Tone.setContext(sharedAudioContext);
+// Preload Tone.js module and create sampler (does NOT start AudioContext).
+// Safe to call multiple times — returns the same promise.
+export function preloadTone(): Promise<void> {
+  if (!toneLoadPromise) {
+    toneLoadPromise = (async () => {
+      Tone = await import("tone");
+      sampler = new Tone.Sampler({
+        urls: PIANO_SAMPLES,
+        release: 1,
+        baseUrl: "https://tonejs.github.io/audio/salamander/",
+        onload: () => {
+          samplerReady = true;
+        },
+      }).toDestination();
+    })();
   }
-  await Tone.start();
-  sampler = new Tone.Sampler({
-    urls: PIANO_SAMPLES,
-    release: 1,
-    baseUrl: "https://tonejs.github.io/audio/salamander/",
-    onload: () => {
-      samplerReady = true;
-    },
-  }).toDestination();
+  return toneLoadPromise;
 }
 
-async function ensureTone() {
-  if (!Tone || !sampler) {
-    await initTone();
+// Resume or unlock the AudioContext. Call from a user gesture handler.
+// Uses the raw AudioContext API so it works even if Tone.js hasn't loaded yet.
+export function unlockAudio(): void {
+  // If Tone is loaded, resume its context
+  if (Tone) {
+    const ctx = Tone.getContext().rawContext as AudioContext;
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+    return;
   }
-  return Tone!;
+  // If Tone isn't loaded yet, create/resume a raw AudioContext
+  // that Tone will inherit when it loads (same global default)
+  const AC = window.AudioContext || (window as any).webkitAudioContext;
+  if (AC) {
+    const ctx = new AC();
+    // Play silent buffer to fully unlock on iOS
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  }
 }
 
 export async function startPlayback(
@@ -94,11 +89,15 @@ export async function startPlayback(
   bpm: number,
   onCurrentItem: (index: number) => void
 ): Promise<void> {
-  // Warm up AudioContext synchronously within the click gesture (iOS requirement)
-  warmUpAudioContext();
+  // Ensure Tone.js is loaded (may already be done via preload)
+  await preloadTone();
 
-  const T = await ensureTone();
-  await T.start();
+  // Tone.start() resumes the AudioContext. On iOS Safari this only
+  // works when called inside a user-gesture call stack. Because
+  // preloadTone() may resolve immediately (already cached), the
+  // await does not necessarily break the gesture chain. As a fallback,
+  // iOS will unlock the context on the next tap if this one fails.
+  await Tone!.start();
 
   // Wait for piano samples to load
   if (!samplerReady) {
@@ -112,10 +111,10 @@ export async function startPlayback(
     });
   }
 
-  T.getTransport().bpm.value = bpm;
-  T.getTransport().cancel();
-  T.getTransport().stop();
-  T.getTransport().position = 0;
+  Tone!.getTransport().bpm.value = bpm;
+  Tone!.getTransport().cancel();
+  Tone!.getTransport().stop();
+  Tone!.getTransport().position = 0;
 
   let currentBeat = 0;
 
@@ -130,13 +129,13 @@ export async function startPlayback(
       const notes = chordToNotes(item.root, item.quality ?? "");
       const durationInSeconds = (item.beats / bpm) * 60;
 
-      T.getTransport().schedule((time) => {
+      Tone!.getTransport().schedule((time) => {
         sampler!.triggerAttackRelease(notes, durationInSeconds, time);
-        T.getDraw().schedule(() => onCurrentItem(index), time);
+        Tone!.getDraw().schedule(() => onCurrentItem(index), time);
       }, timeInSeconds);
     } else {
-      T.getTransport().schedule((time) => {
-        T.getDraw().schedule(() => onCurrentItem(index), time);
+      Tone!.getTransport().schedule((time) => {
+        Tone!.getDraw().schedule(() => onCurrentItem(index), time);
       }, timeInSeconds);
     }
 
@@ -144,13 +143,13 @@ export async function startPlayback(
   }
 
   const totalTime = (currentBeat / bpm) * 60;
-  T.getTransport().schedule((time) => {
-    T.getDraw().schedule(() => {
+  Tone!.getTransport().schedule((time) => {
+    Tone!.getDraw().schedule(() => {
       stopPlayback(onCurrentItem);
     }, time);
   }, totalTime);
 
-  T.getTransport().start();
+  Tone!.getTransport().start();
 }
 
 export async function stopPlayback(

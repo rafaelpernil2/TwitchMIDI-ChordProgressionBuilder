@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop, parseSendloop } from "../lib/formatter";
-import { startPlayback, stopPlayback, initTone, warmUpAudioContext } from "../lib/playback";
+import { startPlayback, stopPlayback, preloadTone, unlockAudio } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
 import TimeSignatureSelector from "./TimeSignatureSelector";
@@ -24,12 +24,11 @@ export default function App() {
   useEffect(() => {
     setLocale(detectLocale());
 
-    // iOS Safari requires AudioContext to be created and resumed
-    // synchronously within a user gesture. We unlock it on the first
-    // interaction, then asynchronously preload Tone.js + samples.
+    // On first interaction: unlock audio (synchronous, iOS requirement)
+    // and start loading Tone.js + piano samples in the background.
     const preload = () => {
-      warmUpAudioContext(); // synchronous — unlocks audio on iOS
-      initTone();           // async — loads Tone.js + piano samples
+      unlockAudio();
+      preloadTone();
       document.removeEventListener("touchstart", preload);
       document.removeEventListener("mousedown", preload);
     };
@@ -192,8 +191,16 @@ export default function App() {
 
   async function handlePlay() {
     if (items.length === 0) return;
+    // Unlock audio synchronously in the click gesture — iOS Safari
+    // requires AudioContext.resume() in the same call stack as
+    // the user interaction, before any awaits.
+    unlockAudio();
     setIsPlaying(true);
-    await startPlayback(items, timeSignature, bpm, handleCurrentItem);
+    try {
+      await startPlayback(items, timeSignature, bpm, handleCurrentItem);
+    } catch {
+      setIsPlaying(false);
+    }
   }
 
   async function handleStop() {
