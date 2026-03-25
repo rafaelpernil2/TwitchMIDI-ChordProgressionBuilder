@@ -6,6 +6,8 @@ let sampler: import("tone").Sampler | null = null;
 let samplerReady = false;
 let toneLoadPromise: Promise<void> | null = null;
 let audioUnlocked = false;
+const debugLog: string[] = [];
+function ts() { return new Date().toISOString().slice(11, 23); }
 
 const PIANO_SAMPLES: Record<string, string> = {
   A0: "A0.mp3",
@@ -44,28 +46,46 @@ const PIANO_SAMPLES: Record<string, string> = {
 // This does NOT start the AudioContext — just loads the JS + creates the sampler.
 export function loadTone(): Promise<void> {
   if (!toneLoadPromise) {
+    debugLog.push(`[${ts()}] loadTone: starting import`);
     toneLoadPromise = (async () => {
-      Tone = await import("tone");
-      sampler = new Tone.Sampler({
-        urls: PIANO_SAMPLES,
-        release: 1,
-        baseUrl: "https://tonejs.github.io/audio/salamander/",
-        onload: () => {
-          samplerReady = true;
-        },
-      }).toDestination();
+      try {
+        Tone = await import("tone");
+        debugLog.push(`[${ts()}] loadTone: import done, ctx state=${Tone.getContext().state}`);
+        sampler = new Tone.Sampler({
+          urls: PIANO_SAMPLES,
+          release: 1,
+          baseUrl: "https://tonejs.github.io/audio/salamander/",
+          onload: () => {
+            samplerReady = true;
+            debugLog.push(`[${ts()}] loadTone: samples loaded`);
+          },
+        }).toDestination();
+        debugLog.push(`[${ts()}] loadTone: sampler created`);
+      } catch (e: any) {
+        debugLog.push(`[${ts()}] loadTone ERROR: ${e?.message ?? e}`);
+        throw e;
+      }
     })();
   }
   return toneLoadPromise;
 }
 
-// Unlock/resume the AudioContext. MUST be called synchronously from a
-// user gesture handler (click/touchend). On iOS Safari, the AudioContext
-// starts suspended and can only be resumed inside a user gesture.
+// Unlock/resume the AudioContext. MUST be called from a user gesture
+// handler (click/touchend). On iOS Safari, the AudioContext starts
+// suspended and can only be resumed inside a user gesture.
 export async function unlockAudio(): Promise<void> {
-  if (!Tone) return;
-  await Tone.start();
-  audioUnlocked = true;
+  debugLog.push(`[${ts()}] unlockAudio: Tone=${!!Tone}, ctx=${Tone ? Tone.getContext().state : 'n/a'}`);
+  if (!Tone) {
+    debugLog.push(`[${ts()}] unlockAudio: Tone not loaded, skipping`);
+    return;
+  }
+  try {
+    await Tone.start();
+    audioUnlocked = true;
+    debugLog.push(`[${ts()}] unlockAudio: done, ctx=${Tone.getContext().state}`);
+  } catch (e: any) {
+    debugLog.push(`[${ts()}] unlockAudio ERROR: ${e?.message ?? e}`);
+  }
 }
 
 export async function startPlayback(
@@ -74,11 +94,15 @@ export async function startPlayback(
   bpm: number,
   onCurrentItem: (index: number) => void
 ): Promise<void> {
+  debugLog.push(`[${ts()}] startPlayback: begin`);
+
   // Ensure Tone is loaded
   await loadTone();
+  debugLog.push(`[${ts()}] startPlayback: tone loaded, ctx=${Tone!.getContext().state}`);
 
   // Resume AudioContext (may already be running)
   await Tone!.start();
+  debugLog.push(`[${ts()}] startPlayback: after Tone.start(), ctx=${Tone!.getContext().state}`);
 
   // Wait for piano samples to load
   if (!samplerReady) {
@@ -131,6 +155,28 @@ export async function startPlayback(
   }, totalTime);
 
   Tone!.getTransport().start();
+  debugLog.push(`[${ts()}] startPlayback: transport started, state=${Tone!.getTransport().state}`);
+}
+
+// Debug helper — returns current state of audio internals
+export function getDebugInfo(): { state: Record<string, string>; log: string[] } {
+  const state: Record<string, string> = {};
+  state["Tone loaded"] = Tone ? "yes" : "no";
+  state["Sampler created"] = sampler ? "yes" : "no";
+  state["Samples ready"] = samplerReady ? "yes" : "no";
+  state["Audio unlocked"] = audioUnlocked ? "yes" : "no";
+  state["UA"] = typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 80) : "n/a";
+  if (Tone) {
+    try {
+      const ctx = Tone.getContext();
+      state["Context state"] = ctx.state;
+      state["Context sampleRate"] = String((ctx.rawContext as AudioContext).sampleRate);
+      state["Transport state"] = Tone.getTransport().state;
+    } catch (e: any) {
+      state["Context error"] = e?.message ?? String(e);
+    }
+  }
+  return { state, log: debugLog };
 }
 
 export async function stopPlayback(

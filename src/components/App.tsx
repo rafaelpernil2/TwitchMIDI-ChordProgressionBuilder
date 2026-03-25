@@ -12,6 +12,7 @@ import ChordStrip from "./ChordStrip";
 import OutputBar from "./OutputBar";
 import PlaybackControls from "./PlaybackControls";
 import LanguageSwitcher from "./LanguageSwitcher";
+import DebugOverlay from "./DebugOverlay";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -24,22 +25,20 @@ export default function App() {
   useEffect(() => {
     setLocale(detectLocale());
 
-    // Start loading Tone.js immediately so it's ready before the
-    // user interacts. This does NOT create the AudioContext yet.
-    loadTone();
-
-    // On first user gesture, unlock the AudioContext (iOS Safari
-    // requires resume() to be called within a user gesture).
-    const unlock = () => {
-      unlockAudio();
-      document.removeEventListener("touchend", unlock);
-      document.removeEventListener("click", unlock);
+    // Load Tone.js + create AudioContext on first user gesture.
+    // iOS Safari requires the AudioContext to be created/resumed
+    // within a user gesture — calling loadTone() on mount would
+    // create a permanently suspended context.
+    const init = () => {
+      loadTone().then(() => unlockAudio());
+      document.removeEventListener("touchend", init);
+      document.removeEventListener("click", init);
     };
-    document.addEventListener("touchend", unlock);
-    document.addEventListener("click", unlock);
+    document.addEventListener("touchend", init);
+    document.addEventListener("click", init);
     return () => {
-      document.removeEventListener("touchend", unlock);
-      document.removeEventListener("click", unlock);
+      document.removeEventListener("touchend", init);
+      document.removeEventListener("click", init);
     };
   }, []);
 
@@ -355,6 +354,7 @@ export default function App() {
           />
         </section>
       </div>
+      <DebugOverlay />
     </I18nContext.Provider>
   );
 }
