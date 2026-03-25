@@ -1,4 +1,4 @@
-import { useState, useCallback } from "preact/hooks";
+import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop } from "../lib/formatter";
 import { startPlayback, stopPlayback } from "../lib/playback";
@@ -18,8 +18,12 @@ function generateId(): string {
 }
 
 export default function App() {
-  const [locale, setLocale] = useState<Locale>(detectLocale);
+  const [locale, setLocale] = useState<Locale>("en");
   const t = getTranslations(locale);
+
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
 
   const [timeSignature, setTimeSignature] = useState<TimeSignature>({
     numerator: 4,
