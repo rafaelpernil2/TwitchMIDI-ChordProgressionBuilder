@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import { useI18n } from "../lib/i18n";
 
 interface Props {
@@ -18,6 +19,7 @@ export default function PlaybackControls({
   onStop,
 }: Props) {
   const { t } = useI18n();
+  const [localBpm, setLocalBpm] = useState<string | null>(null);
 
   return (
     <div class="flex items-center gap-3 flex-wrap">
@@ -27,10 +29,16 @@ export default function PlaybackControls({
           type="number"
           min="35"
           max="400"
-          value={bpm}
-          onInput={(e) => {
-            const val = parseInt((e.target as HTMLInputElement).value);
+          value={localBpm !== null ? localBpm : bpm}
+          onFocus={(e) => setLocalBpm((e.target as HTMLInputElement).value)}
+          onInput={(e) => setLocalBpm((e.target as HTMLInputElement).value)}
+          onBlur={() => {
+            const val = parseInt(localBpm ?? "");
             if (!isNaN(val)) onBpmChange(Math.max(35, Math.min(400, val)));
+            setLocalBpm(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
           class="w-12 bg-transparent text-white text-sm font-bold text-center focus:outline-none focus:border-b focus:border-orange-400"
           style="-moz-appearance: textfield; appearance: textfield;"
