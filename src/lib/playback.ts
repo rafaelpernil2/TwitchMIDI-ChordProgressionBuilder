@@ -4,53 +4,63 @@ import { chordToNotes } from "./chords";
 let Tone: typeof import("tone") | null = null;
 let sampler: import("tone").Sampler | null = null;
 let samplerReady = false;
+let toneInitialized = false;
+
+const PIANO_SAMPLES: Record<string, string> = {
+  A0: "A0.mp3",
+  C1: "C1.mp3",
+  "D#1": "Ds1.mp3",
+  "F#1": "Fs1.mp3",
+  A1: "A1.mp3",
+  C2: "C2.mp3",
+  "D#2": "Ds2.mp3",
+  "F#2": "Fs2.mp3",
+  A2: "A2.mp3",
+  C3: "C3.mp3",
+  "D#3": "Ds3.mp3",
+  "F#3": "Fs3.mp3",
+  A3: "A3.mp3",
+  C4: "C4.mp3",
+  "D#4": "Ds4.mp3",
+  "F#4": "Fs4.mp3",
+  A4: "A4.mp3",
+  C5: "C5.mp3",
+  "D#5": "Ds5.mp3",
+  "F#5": "Fs5.mp3",
+  A5: "A5.mp3",
+  C6: "C6.mp3",
+  "D#6": "Ds6.mp3",
+  "F#6": "Fs6.mp3",
+  A6: "A6.mp3",
+  C7: "C7.mp3",
+  "D#7": "Ds7.mp3",
+  "F#7": "Fs7.mp3",
+  A7: "A7.mp3",
+  C8: "C8.mp3",
+};
+
+// Eagerly load Tone.js and create the sampler so they're ready
+// before the user presses Play. This allows Tone.start() to run
+// synchronously within the user gesture — required by iOS Safari.
+export async function initTone(): Promise<void> {
+  if (toneInitialized) return;
+  toneInitialized = true;
+  Tone = await import("tone");
+  sampler = new Tone.Sampler({
+    urls: PIANO_SAMPLES,
+    release: 1,
+    baseUrl: "https://tonejs.github.io/audio/salamander/",
+    onload: () => {
+      samplerReady = true;
+    },
+  }).toDestination();
+}
 
 async function ensureTone() {
-  if (!Tone) {
-    Tone = await import("tone");
+  if (!Tone || !sampler) {
+    await initTone();
   }
-  if (!sampler) {
-    sampler = new Tone.Sampler({
-      urls: {
-        A0: "A0.mp3",
-        C1: "C1.mp3",
-        "D#1": "Ds1.mp3",
-        "F#1": "Fs1.mp3",
-        A1: "A1.mp3",
-        C2: "C2.mp3",
-        "D#2": "Ds2.mp3",
-        "F#2": "Fs2.mp3",
-        A2: "A2.mp3",
-        C3: "C3.mp3",
-        "D#3": "Ds3.mp3",
-        "F#3": "Fs3.mp3",
-        A3: "A3.mp3",
-        C4: "C4.mp3",
-        "D#4": "Ds4.mp3",
-        "F#4": "Fs4.mp3",
-        A4: "A4.mp3",
-        C5: "C5.mp3",
-        "D#5": "Ds5.mp3",
-        "F#5": "Fs5.mp3",
-        A5: "A5.mp3",
-        C6: "C6.mp3",
-        "D#6": "Ds6.mp3",
-        "F#6": "Fs6.mp3",
-        A6: "A6.mp3",
-        C7: "C7.mp3",
-        "D#7": "Ds7.mp3",
-        "F#7": "Fs7.mp3",
-        A7: "A7.mp3",
-        C8: "C8.mp3",
-      },
-      release: 1,
-      baseUrl: "https://tonejs.github.io/audio/salamander/",
-      onload: () => {
-        samplerReady = true;
-      },
-    }).toDestination();
-  }
-  return Tone;
+  return Tone!;
 }
 
 export async function startPlayback(
@@ -60,7 +70,12 @@ export async function startPlayback(
   onCurrentItem: (index: number) => void
 ): Promise<void> {
   const T = await ensureTone();
+
+  // Tone.start() must be called close to the user gesture.
+  // On iOS Safari the AudioContext is only allowed to resume
+  // within the call stack of a user interaction.
   await T.start();
+  await T.getContext().resume();
 
   // Wait for piano samples to load
   if (!samplerReady) {

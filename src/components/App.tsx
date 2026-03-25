@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop, parseSendloop } from "../lib/formatter";
-import { startPlayback, stopPlayback } from "../lib/playback";
+import { startPlayback, stopPlayback, initTone } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
 import TimeSignatureSelector from "./TimeSignatureSelector";
@@ -23,6 +23,15 @@ export default function App() {
 
   useEffect(() => {
     setLocale(detectLocale());
+
+    // Preload Tone.js on first user interaction so the AudioContext
+    // is ready when Play is pressed — required for iOS Safari.
+    const preload = () => {
+      initTone();
+      document.removeEventListener("pointerdown", preload);
+    };
+    document.addEventListener("pointerdown", preload);
+    return () => document.removeEventListener("pointerdown", preload);
   }, []);
 
   const [timeSignature, setTimeSignature] = useState<TimeSignature>({
