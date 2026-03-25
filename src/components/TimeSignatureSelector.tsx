@@ -1,4 +1,5 @@
 import type { TimeSignature } from "../lib/types";
+import { useI18n } from "../lib/i18n";
 
 interface Props {
   value: TimeSignature;
@@ -14,23 +15,17 @@ const PRESETS = [
   { label: "12/8", numerator: 12, denominator: 8 },
 ];
 
-const VALID_DENOMINATORS = [1, 2, 4, 8, 16];
-
-function nearestPowerOf2(n: number): number {
-  const valid = VALID_DENOMINATORS.filter((d) => d <= 16);
-  return valid.reduce((prev, curr) =>
-    Math.abs(curr - n) < Math.abs(prev - n) ? curr : prev
-  );
-}
+const VALID_DENOMINATORS = [1, 2, 4, 8, 16, 32];
 
 export default function TimeSignatureSelector({ value, onChange }: Props) {
+  const { t } = useI18n();
   const currentLabel = `${value.numerator}/${value.denominator}`;
   const isPreset = PRESETS.some((p) => p.label === currentLabel);
 
   return (
     <div class="space-y-2">
       <label class="text-sm font-semibold text-violet-300 uppercase tracking-wider">
-        Time Signature
+        {t.timeSignature}
       </label>
       <div class="flex gap-2 flex-wrap">
         {PRESETS.map((preset) => (

@@ -1,18 +1,26 @@
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { CHORD_DEFINITIONS } from "../lib/chords";
+import { useI18n } from "../lib/i18n";
 
 interface Props {
   selected: string | null;
   selectedNote: string | null;
+  editingIndex: number | null;
   onSelect: (suffix: string) => void;
 }
 
 export default function ChordTypeSelector({
   selected,
   selectedNote,
+  editingIndex,
   onSelect,
 }: Props) {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setSearch("");
+  }, [editingIndex]);
 
   const filtered = search
     ? CHORD_DEFINITIONS.filter(
@@ -27,11 +35,11 @@ export default function ChordTypeSelector({
   return (
     <div class="space-y-2">
       <label class="text-sm font-semibold text-amber-300 uppercase tracking-wider">
-        Chord Type
+        {t.chordType}
       </label>
       <input
         type="text"
-        placeholder="Search chords..."
+        placeholder={t.searchChords}
         value={search}
         onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
         class="w-full px-3 py-2 rounded-lg bg-[#1a1a2e] text-white text-sm border border-gray-700/50 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 focus:outline-none placeholder-gray-500 transition-all"

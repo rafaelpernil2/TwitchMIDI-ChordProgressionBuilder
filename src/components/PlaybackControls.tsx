@@ -1,3 +1,5 @@
+import { useI18n } from "../lib/i18n";
+
 interface Props {
   bpm: number;
   isPlaying: boolean;
@@ -15,6 +17,8 @@ export default function PlaybackControls({
   onPlay,
   onStop,
 }: Props) {
+  const { t } = useI18n();
+
   return (
     <div class="flex items-center gap-3 flex-wrap">
       <label class="text-sm font-semibold text-orange-300 uppercase tracking-wider whitespace-nowrap">
@@ -39,7 +43,7 @@ export default function PlaybackControls({
             : "bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30"
         }`}
       >
-        {isPlaying ? "Stop" : "Play"}
+        {isPlaying ? t.stop : t.play}
       </button>
     </div>
   );

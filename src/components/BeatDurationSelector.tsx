@@ -1,3 +1,5 @@
+import { useI18n } from "../lib/i18n";
+
 interface Props {
   value: number;
   onChange: (beats: number) => void;
@@ -6,10 +8,12 @@ interface Props {
 const QUICK_BEATS = [1, 2, 3, 4];
 
 export default function BeatDurationSelector({ value, onChange }: Props) {
+  const { t } = useI18n();
+
   return (
     <div class="space-y-2">
       <label class="text-sm font-semibold text-sky-300 uppercase tracking-wider">
-        Beats
+        {t.beats}
       </label>
       <div class="flex items-center gap-2">
         {QUICK_BEATS.map((b) => (

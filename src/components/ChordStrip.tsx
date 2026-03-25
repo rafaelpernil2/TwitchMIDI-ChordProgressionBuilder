@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import type { ProgressionItem } from "../lib/types";
+import { useI18n } from "../lib/i18n";
 import ChordCard from "./ChordCard";
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
   currentPlayingIndex: number;
   editingIndex: number | null;
   onSelect: (index: number) => void;
+  onCancelEdit: () => void;
   onReorder: (from: number, to: number) => void;
   onRemove: (index: number) => void;
 }
@@ -16,9 +18,11 @@ export default function ChordStrip({
   currentPlayingIndex,
   editingIndex,
   onSelect,
+  onCancelEdit,
   onReorder,
   onRemove,
 }: Props) {
+  const { t } = useI18n();
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   function handleDragStart(e: DragEvent, index: number) {
@@ -55,7 +59,7 @@ export default function ChordStrip({
     return (
       <div class="border-2 border-dashed border-gray-700/60 rounded-xl p-8 text-center">
         <p class="text-sm text-gray-500">
-          Select a root note and chord type to start building your progression
+          {t.emptyState}
         </p>
       </div>
     );
@@ -64,14 +68,19 @@ export default function ChordStrip({
   return (
     <div class="space-y-2">
       <label class="text-sm font-semibold text-pink-300 uppercase tracking-wider">
-        Progression ({items.length} {items.length === 1 ? "chord" : "chords"})
+        {t.progression} ({items.length} {items.length === 1 ? t.chord : t.chords})
         {editingIndex !== null && (
           <span class="text-amber-300 ml-2 normal-case tracking-normal">
-            — click a chord to edit it
+            — {t.clickToEdit}
           </span>
         )}
       </label>
-      <div class="flex flex-wrap gap-2.5 p-4 bg-[#07070d] rounded-xl border border-gray-800/60 min-h-[70px]">
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onCancelEdit();
+        }}
+        class="flex flex-wrap gap-2.5 p-4 bg-[#07070d] rounded-xl border border-gray-800/60 min-h-[70px]"
+      >
         {items.map((item, i) => (
           <ChordCard
             key={item.id}

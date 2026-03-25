@@ -1,4 +1,5 @@
 import { NOTES, ENHARMONIC_MAP } from "../lib/chords";
+import { useI18n } from "../lib/i18n";
 
 interface Props {
   selected: string | null;
@@ -13,6 +14,8 @@ export default function NoteSelector({
   onSelect,
   onToggleFlats,
 }: Props) {
+  const { t } = useI18n();
+
   function displayNote(note: string): string {
     if (useFlats && ENHARMONIC_MAP[note]) {
       return ENHARMONIC_MAP[note];
@@ -31,13 +34,13 @@ export default function NoteSelector({
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <label class="text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-          Root Note
+          {t.rootNote}
         </label>
         <button
           onClick={onToggleFlats}
           class="text-xs px-2.5 py-1 rounded-md bg-[#1a1a2e] text-gray-300 hover:text-white border border-gray-700/50 hover:border-violet-500/50 transition-all"
         >
-          {useFlats ? "♭ Flats" : "♯ Sharps"}
+          {useFlats ? `♭ ${t.flats}` : `♯ ${t.sharps}`}
         </button>
       </div>
       <div class="grid grid-cols-6 sm:grid-cols-12 gap-1.5">

@@ -1,4 +1,5 @@
 import type { ProgressionItem } from "../lib/types";
+import { useI18n } from "../lib/i18n";
 
 interface Props {
   item: ProgressionItem;
@@ -29,9 +30,11 @@ export default function ChordCard({
   onDragOver,
   onDrop,
 }: Props) {
+  const { t } = useI18n();
+
   const label =
     item.type === "rest"
-      ? "rest"
+      ? t.rest
       : `${item.root ?? ""}${item.quality ?? ""}`;
 
   function getCardClass() {
@@ -46,6 +49,8 @@ export default function ChordCard({
     }
     return "bg-[#1a1a2e] text-gray-100 border border-gray-700/60 hover:border-amber-500/40 hover:shadow-md hover:shadow-amber-500/10 cursor-pointer";
   }
+
+  const beatLabel = item.beats === 1 ? t.beat : t.beats.toLowerCase();
 
   return (
     <div
@@ -76,7 +81,7 @@ export default function ChordCard({
               : "text-gray-500"
         }`}
       >
-        {item.beats} {item.beats === 1 ? "beat" : "beats"}
+        {item.beats} {beatLabel}
       </span>
       <div class="flex gap-0.5 sm:hidden">
         <button

@@ -2,6 +2,8 @@ import { useState, useCallback } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop } from "../lib/formatter";
 import { startPlayback, stopPlayback } from "../lib/playback";
+import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
+import type { Locale } from "../lib/i18n";
 import TimeSignatureSelector from "./TimeSignatureSelector";
 import NoteSelector from "./NoteSelector";
 import ChordTypeSelector from "./ChordTypeSelector";
@@ -9,12 +11,16 @@ import BeatDurationSelector from "./BeatDurationSelector";
 import ChordStrip from "./ChordStrip";
 import OutputBar from "./OutputBar";
 import PlaybackControls from "./PlaybackControls";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
 export default function App() {
+  const [locale, setLocale] = useState<Locale>(detectLocale);
+  const t = getTranslations(locale);
+
   const [timeSignature, setTimeSignature] = useState<TimeSignature>({
     numerator: 4,
     denominator: 4,
@@ -152,118 +158,136 @@ export default function App() {
   const chordLabel =
     selectedNote && selectedQuality !== null
       ? `${selectedNote}${selectedQuality}`
-      : "Chord";
+      : "";
 
   return (
-    <div class="space-y-5">
-      {/* Time Signature */}
-      <section class="bg-[#12121e] rounded-2xl p-5 border border-violet-500/10 shadow-lg shadow-violet-500/5">
-        <TimeSignatureSelector value={timeSignature} onChange={setTimeSignature} />
-      </section>
-
-      {/* Chord Builder */}
-      <section
-        class={`bg-[#12121e] rounded-2xl p-5 space-y-4 border shadow-lg transition-all ${
-          isEditing
-            ? "border-amber-500/30 shadow-amber-500/5"
-            : "border-emerald-500/10 shadow-emerald-500/5"
-        }`}
-      >
-        {isEditing && (
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-amber-300 uppercase tracking-wider">
-              Editing chord {editingIndex! + 1}
-              {editingItem?.type === "rest"
-                ? " (rest)"
-                : editingItem?.root
-                  ? ` (${editingItem.root}${editingItem.quality ?? ""})`
-                  : ""}
-            </span>
-            <button
-              onClick={cancelEditing}
-              class="text-xs font-bold text-gray-500 hover:text-white px-2 py-1 rounded bg-[#1a1a2e] hover:bg-gray-800 transition-all"
-            >
-              Cancel
-            </button>
+    <I18nContext.Provider value={{ t, locale, setLocale }}>
+      <div class="space-y-5">
+        {/* Header */}
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <img src="/favicon.svg" alt="TwitchMIDI Logo" class="w-10 h-10" />
+            <h1 class="text-2xl font-bold">
+              <span style="color: #a78bfa;">TwitchMIDI</span>
+              <span style="color: #e2e8f0;"> {t.title}</span>
+            </h1>
           </div>
-        )}
+          <LanguageSwitcher />
+        </div>
 
-        <NoteSelector
-          selected={selectedNote}
-          useFlats={useFlats}
-          onSelect={setSelectedNote}
-          onToggleFlats={() => setUseFlats((f) => !f)}
-        />
+        {/* Time Signature */}
+        <section class="bg-[#12121e] rounded-2xl p-5 border border-violet-500/10 shadow-lg shadow-violet-500/5">
+          <TimeSignatureSelector value={timeSignature} onChange={setTimeSignature} />
+        </section>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ChordTypeSelector
-            selected={selectedQuality}
-            selectedNote={selectedNote}
-            onSelect={setSelectedQuality}
-          />
-          <div class="space-y-4">
-            <BeatDurationSelector value={beats} onChange={setBeats} />
-            <div class="flex gap-2">
+        {/* Chord Builder */}
+        <section
+          class={`bg-[#12121e] rounded-2xl p-5 space-y-4 border shadow-lg transition-all ${
+            isEditing
+              ? "border-amber-500/30 shadow-amber-500/5"
+              : "border-emerald-500/10 shadow-emerald-500/5"
+          }`}
+        >
+          {isEditing && (
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-amber-300 uppercase tracking-wider">
+                {t.editingChord} {editingIndex! + 1}
+                {editingItem?.type === "rest"
+                  ? ` (${t.rest})`
+                  : editingItem?.root
+                    ? ` (${editingItem.root}${editingItem.quality ?? ""})`
+                    : ""}
+              </span>
               <button
-                onClick={addOrUpdateChord}
-                disabled={!selectedNote || selectedQuality === null}
-                class={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none ${
-                  isEditing
-                    ? "bg-amber-500 text-black hover:bg-amber-400 shadow-amber-500/20"
-                    : "bg-violet-600 text-white hover:bg-violet-500 shadow-violet-600/20"
-                }`}
+                onClick={cancelEditing}
+                class="text-xs font-bold text-gray-500 hover:text-white px-2 py-1 rounded bg-[#1a1a2e] hover:bg-gray-800 transition-all"
               >
-                {isEditing ? `Update ${chordLabel}` : `+ Add ${chordLabel}`}
-              </button>
-              <button
-                onClick={addOrUpdateRest}
-                class={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                  isEditing
-                    ? "bg-amber-500/20 text-amber-300 border-2 border-dashed border-amber-500/40 hover:border-amber-400"
-                    : "bg-[#1a1a2e] text-gray-400 hover:bg-gray-800 hover:text-white border-2 border-dashed border-gray-700/50 hover:border-gray-600"
-                }`}
-              >
-                {isEditing ? "Set Rest" : "+ Rest"}
+                {t.cancel}
               </button>
             </div>
-          </div>
-        </div>
-      </section>
+          )}
 
-      {/* Chord Strip */}
-      <section class="bg-[#12121e] rounded-2xl p-5 border border-pink-500/10 shadow-lg shadow-pink-500/5">
-        <ChordStrip
-          items={items}
-          currentPlayingIndex={currentPlayingIndex}
-          editingIndex={editingIndex}
-          onSelect={selectForEditing}
-          onReorder={reorderItems}
-          onRemove={removeItem}
-        />
-        {items.length > 0 && (
-          <div class="mt-3 flex justify-end">
-            <button
-              onClick={clearAll}
-              class="text-xs font-medium text-gray-600 hover:text-red-400 transition-colors"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
-      </section>
+          <NoteSelector
+            selected={selectedNote}
+            useFlats={useFlats}
+            onSelect={setSelectedNote}
+            onToggleFlats={() => setUseFlats((f) => !f)}
+          />
 
-      {/* Output & Playback */}
-      <section class="bg-[#12121e] rounded-2xl p-5 border border-rose-500/10 shadow-lg shadow-rose-500/5 space-y-2">
-        <OutputBar output={output} />
-        <PlaybackControls
-          bpm={bpm}
-          isPlaying={isPlaying}
-          disabled={items.length === 0}
-          onBpmChange={setBpm}
-          onPlay={handlePlay}
-          onStop={handleStop}
-        />
-      </section>
-    </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ChordTypeSelector
+              selected={selectedQuality}
+              selectedNote={selectedNote}
+              editingIndex={editingIndex}
+              onSelect={setSelectedQuality}
+            />
+            <div class="space-y-4">
+              <BeatDurationSelector value={beats} onChange={setBeats} />
+              <div class="flex gap-2">
+                <button
+                  onClick={addOrUpdateChord}
+                  disabled={!selectedNote || selectedQuality === null}
+                  class={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none ${
+                    isEditing
+                      ? "bg-amber-500 text-black hover:bg-amber-400 shadow-amber-500/20"
+                      : "bg-violet-600 text-white hover:bg-violet-500 shadow-violet-600/20"
+                  }`}
+                >
+                  {isEditing
+                    ? `${t.updateChord} ${chordLabel}`
+                    : `+ ${t.addChord} ${chordLabel}`}
+                </button>
+                <button
+                  onClick={addOrUpdateRest}
+                  class={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                    isEditing
+                      ? "bg-amber-500/20 text-amber-300 border-2 border-dashed border-amber-500/40 hover:border-amber-400"
+                      : "bg-[#1a1a2e] text-gray-400 hover:bg-gray-800 hover:text-white border-2 border-dashed border-gray-700/50 hover:border-gray-600"
+                  }`}
+                >
+                  {isEditing ? t.setRest : `+ ${t.addRest}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Chord Strip */}
+        <section class="bg-[#12121e] rounded-2xl p-5 border border-pink-500/10 shadow-lg shadow-pink-500/5">
+          <ChordStrip
+            items={items}
+            currentPlayingIndex={currentPlayingIndex}
+            editingIndex={editingIndex}
+            onSelect={selectForEditing}
+            onCancelEdit={cancelEditing}
+            onReorder={reorderItems}
+            onRemove={removeItem}
+          />
+          {items.length > 0 && (
+            <div class="mt-3 flex justify-end">
+              <button
+                onClick={clearAll}
+                class="text-xs font-medium text-gray-600 hover:text-red-400 transition-colors"
+              >
+                {t.clearAll}
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Output & Playback */}
+        <section class="bg-[#12121e] rounded-2xl p-5 border border-rose-500/10 shadow-lg shadow-rose-500/5 space-y-2">
+          <OutputBar output={output} />
+          <PlaybackControls
+            bpm={bpm}
+            isPlaying={isPlaying}
+            disabled={items.length === 0}
+            onBpmChange={setBpm}
+            onPlay={handlePlay}
+            onStop={handleStop}
+          />
+        </section>
+      </div>
+    </I18nContext.Provider>
   );
 }
