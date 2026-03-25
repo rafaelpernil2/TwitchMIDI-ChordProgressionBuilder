@@ -5,6 +5,28 @@ let Tone: typeof import("tone") | null = null;
 let sampler: import("tone").Sampler | null = null;
 let samplerReady = false;
 let toneInitialized = false;
+let sharedAudioContext: AudioContext | null = null;
+
+// Create and resume an AudioContext synchronously within a user gesture.
+// iOS Safari requires this to happen in the same call stack as the
+// touch/click event — no awaits before this call.
+export function warmUpAudioContext(): void {
+  if (sharedAudioContext) {
+    // Context exists but may be suspended (iOS suspends on page visibility change)
+    if (sharedAudioContext.state === "suspended") {
+      sharedAudioContext.resume();
+    }
+    return;
+  }
+  const AC = window.AudioContext || (window as any).webkitAudioContext;
+  sharedAudioContext = new AC();
+  // Play a silent buffer to fully unlock audio on iOS
+  const buffer = sharedAudioContext.createBuffer(1, 1, 22050);
+  const source = sharedAudioContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(sharedAudioContext.destination);
+  source.start(0);
+}
 
 const PIANO_SAMPLES: Record<string, string> = {
   A0: "A0.mp3",
@@ -39,13 +61,16 @@ const PIANO_SAMPLES: Record<string, string> = {
   C8: "C8.mp3",
 };
 
-// Eagerly load Tone.js and create the sampler so they're ready
-// before the user presses Play. This allows Tone.start() to run
-// synchronously within the user gesture — required by iOS Safari.
+// Load Tone.js and wire it to the already-unlocked AudioContext.
 export async function initTone(): Promise<void> {
   if (toneInitialized) return;
   toneInitialized = true;
   Tone = await import("tone");
+  // If we already unlocked an AudioContext, hand it to Tone.js
+  if (sharedAudioContext) {
+    Tone.setContext(sharedAudioContext);
+  }
+  await Tone.start();
   sampler = new Tone.Sampler({
     urls: PIANO_SAMPLES,
     release: 1,
@@ -69,13 +94,11 @@ export async function startPlayback(
   bpm: number,
   onCurrentItem: (index: number) => void
 ): Promise<void> {
-  const T = await ensureTone();
+  // Warm up AudioContext synchronously within the click gesture (iOS requirement)
+  warmUpAudioContext();
 
-  // Tone.start() must be called close to the user gesture.
-  // On iOS Safari the AudioContext is only allowed to resume
-  // within the call stack of a user interaction.
+  const T = await ensureTone();
   await T.start();
-  await T.getContext().resume();
 
   // Wait for piano samples to load
   if (!samplerReady) {

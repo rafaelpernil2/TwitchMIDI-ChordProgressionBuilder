@@ -1,23 +1,23 @@
 # Chord Progression Builder - Implementation Plan
 
 ## Context
-Build a single-page web app that lets users visually construct chord progressions in TwitchMIDI `!sendloop` format. The app needs a time signature selector, note/chord-type pickers, a visual chord strip, clipboard export, and audio playback.
+Build a single-page web app that lets users visually construct chord progressions in TwitchMIDI `!sendloop` format. The app needs a time signature selector, note/chord-type pickers, a visual chord strip, clipboard export, and audio playback. Deployed at https://loop.twitchmidi.com.
 
 ## Tech Stack
 - **Astro 5** + TypeScript
 - **Preact** (interactive island via `client:load`)
 - **Tailwind CSS**
 - **Tone.js** (audio playback with piano samples)
-- **Cloudflare Workers** (deployment via wrangler)
+- **Cloudflare Workers** (deployment via wrangler, domain: loop.twitchmidi.com)
 
 ## File Structure
 
 ```
 src/
-├── layouts/Layout.astro          # HTML shell, Tailwind, custom scrollbar CSS
+├── layouts/Layout.astro          # HTML shell, Tailwind, custom scrollbar CSS, OG meta tags
 ├── pages/index.astro             # Single page, mounts <App client:load />
 ├── components/
-│   ├── App.tsx                   # Root island, owns all state, URL sync
+│   ├── App.tsx                   # Root island, owns all state, URL sync, Tone.js preload
 │   ├── TimeSignatureSelector.tsx # Preset buttons (4/4, 3/4, 6/8...) + custom input
 │   ├── NoteSelector.tsx          # 12-button chromatic grid with sharps/flats toggle
 │   ├── ChordTypeSelector.tsx     # Searchable quality list with categories (140+ chords)
@@ -32,8 +32,11 @@ src/
 │   ├── chords.ts                 # NOTE_TO_SEMITONE, 140+ chord definitions, chordToNotes()
 │   ├── formatter.ts              # formatSendloop() / parseSendloop()
 │   ├── i18n.ts                   # EN/ES translations (60+ keys), auto-locale detection
-│   └── playback.ts               # Tone.js Transport scheduling, piano sample synth
+│   └── playback.ts               # Tone.js Transport scheduling, piano sample synth, iOS fix
 └── styles/global.css             # Tailwind directives
+public/
+├── favicon.svg                   # TwitchMIDI logo
+└── og-image.png                  # Open Graph preview image (1200x630)
 ```
 
 ## Data Model (src/lib/types.ts)
@@ -63,7 +66,9 @@ Each item gets a UUID for stable reorder/removal.
 - `Tone.Transport` for beat-accurate scheduling
 - `Tone.Draw.schedule` for UI highlighting sync
 - Dynamic import of Tone.js to avoid SSR issues
-- `Tone.start()` called on user gesture (Play button)
+- `initTone()` eagerly preloads Tone.js and creates the sampler on first user interaction
+- `Tone.start()` + `context.resume()` called on Play to ensure AudioContext is running
+- iOS Safari compatibility: AudioContext preloaded on first `pointerdown` event
 
 ### Internationalization (i18n.ts)
 - English and Spanish translations (60+ keys)
@@ -76,6 +81,13 @@ Each item gets a UUID for stable reorder/removal.
 - On mount: parses hash via `parseSendloop()` to restore state
 - On output change: syncs state to hash via `history.replaceState()`
 - Enables shareable URLs containing the full chord progression
+
+### Open Graph / Link Previews (Layout.astro)
+- OG meta tags (og:title, og:description, og:image, og:url, og:type)
+- Twitter Card meta tags (summary_large_image)
+- Theme color meta tag
+- OG image: 1200x630 PNG generated via sharp from SVG (includes TwitchMIDI logo, title, chord card illustrations)
+- `site` configured in astro.config.mjs to `https://loop.twitchmidi.com` for correct absolute URLs
 
 ### UX Flow
 1. User selects a note (stays highlighted)
@@ -98,6 +110,7 @@ Each item gets a UUID for stable reorder/removal.
 - [x] Layout.astro, index.astro with header
 - [x] Cloudflare Workers deployment via wrangler
 - [x] Assets ignore configuration
+- [x] Site configured to https://loop.twitchmidi.com
 
 ### Phase 2: Data Layer — DONE
 - [x] types.ts — ProgressionItem, TimeSignature, ChordDefinition
@@ -124,6 +137,7 @@ Each item gets a UUID for stable reorder/removal.
 - [x] Highlight current chord during playback
 - [x] Piano sample-based synthesis (upgraded from triangle synth)
 - [x] BPM user-editable with early validation (35-400 range)
+- [x] iOS Safari fix: eager Tone.js preload on first pointerdown + context.resume()
 
 ### Phase 6: Internationalization — DONE
 - [x] i18n.ts with EN/ES translations (60+ keys)
@@ -151,7 +165,14 @@ Each item gets a UUID for stable reorder/removal.
 - [x] Visual "Copied!" / "Link copied!" feedback on all buttons
 - [x] Responsive button layout (stack on mobile)
 
-### Phase 10: Polish & Fixes — DONE
+### Phase 10: Link Previews & SEO — DONE
+- [x] Open Graph meta tags (og:title, og:description, og:image, og:url, og:type)
+- [x] Twitter Card meta tags (summary_large_image)
+- [x] Theme color meta tag
+- [x] OG image generated via sharp (1200x630 PNG with logo, title, chord cards)
+- [x] Site URL configured in astro.config.mjs for correct absolute URLs
+
+### Phase 11: Polish & Fixes — DONE
 - [x] Responsive layout (stacks on mobile)
 - [x] Empty state messaging
 - [x] Custom scrollbar styling
@@ -166,11 +187,13 @@ Each item gets a UUID for stable reorder/removal.
 5. Raw button → clipboard contains chords only
 6. Share button → clipboard contains URL with chord progression
 7. Play button → audio plays chords in sequence with piano samples
-8. Drag reorder → strip and output update
-9. Change time signature → output prefix updates
-10. Mobile: layout stacks, buttons responsive
-11. Click chord → enters edit mode, can update or cancel
-12. Edit output field → progression updates from typed command
-13. Paste URL with hash → progression restores on page load
-14. Language switcher → all UI text toggles EN/ES
-15. BPM editable → validates range 35-400
+8. Play button works on iOS Safari
+9. Drag reorder → strip and output update
+10. Change time signature → output prefix updates
+11. Mobile: layout stacks, buttons responsive
+12. Click chord → enters edit mode, can update or cancel
+13. Edit output field → progression updates from typed command
+14. Paste URL with hash → progression restores on page load
+15. Language switcher → all UI text toggles EN/ES
+16. BPM editable → validates range 35-400
+17. Shared link shows OG image preview on social platforms (Twitter, Telegram, WhatsApp)

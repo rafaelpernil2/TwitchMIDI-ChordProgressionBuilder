@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
 import { formatSendloop, parseSendloop } from "../lib/formatter";
-import { startPlayback, stopPlayback, initTone } from "../lib/playback";
+import { startPlayback, stopPlayback, initTone, warmUpAudioContext } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
 import TimeSignatureSelector from "./TimeSignatureSelector";
@@ -24,14 +24,21 @@ export default function App() {
   useEffect(() => {
     setLocale(detectLocale());
 
-    // Preload Tone.js on first user interaction so the AudioContext
-    // is ready when Play is pressed — required for iOS Safari.
+    // iOS Safari requires AudioContext to be created and resumed
+    // synchronously within a user gesture. We unlock it on the first
+    // interaction, then asynchronously preload Tone.js + samples.
     const preload = () => {
-      initTone();
-      document.removeEventListener("pointerdown", preload);
+      warmUpAudioContext(); // synchronous — unlocks audio on iOS
+      initTone();           // async — loads Tone.js + piano samples
+      document.removeEventListener("touchstart", preload);
+      document.removeEventListener("mousedown", preload);
     };
-    document.addEventListener("pointerdown", preload);
-    return () => document.removeEventListener("pointerdown", preload);
+    document.addEventListener("touchstart", preload);
+    document.addEventListener("mousedown", preload);
+    return () => {
+      document.removeEventListener("touchstart", preload);
+      document.removeEventListener("mousedown", preload);
+    };
   }, []);
 
   const [timeSignature, setTimeSignature] = useState<TimeSignature>({
