@@ -52,7 +52,10 @@ export default function App() {
     const hash = window.location.hash.slice(1);
     if (!hash) return;
     try {
-      const result = parseSendloop(decodeURIComponent(hash));
+      // Dashes in the hash represent spaces (for readable URLs)
+      // Also support legacy %20-encoded URLs
+      const decoded = decodeURIComponent(hash).replace(/-/g, " ");
+      const result = parseSendloop(decoded);
       if (result && result.items.length > 0) {
         setTimeSignature(result.timeSignature);
         setItems(result.items);
@@ -73,9 +76,9 @@ export default function App() {
 
   const output = formatSendloop(timeSignature, items);
 
-  // Sync output to URL hash
+  // Sync output to URL hash (spaces replaced with dashes for readability)
   useEffect(() => {
-    const hash = output ? encodeURIComponent(output) : "";
+    const hash = output ? output.replace(/ /g, "-") : "";
     const newUrl = hash
       ? `${window.location.pathname}${window.location.search}#${hash}`
       : `${window.location.pathname}${window.location.search}`;
