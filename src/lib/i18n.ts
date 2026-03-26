@@ -6,7 +6,7 @@ export type Locale = "en" | "es";
 const translations = {
   en: {
     // Header
-    title: "Chord Progression Builder",
+    title: "Loop Architect",
 
     // Time Signature
     timeSignature: "Time Signature",
@@ -77,7 +77,7 @@ const translations = {
   },
   es: {
     // Header
-    title: "Constructor de Progresiones de Acordes",
+    title: "Loop Architect",
 
     // Time Signature
     timeSignature: "Compas",
