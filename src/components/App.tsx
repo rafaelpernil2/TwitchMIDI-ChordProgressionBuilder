@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "preact/hooks";
 import type { TimeSignature, ProgressionItem } from "../lib/types";
+import { ENHARMONIC_MAP, FLAT_TO_SHARP } from "../lib/chords";
 import { formatSendloop, parseSendloop } from "../lib/formatter";
 import { startPlayback, stopPlayback, loadTone, unlockAudio } from "../lib/playback";
 import { I18nContext, getTranslations, detectLocale } from "../lib/i18n";
@@ -99,6 +100,11 @@ export default function App() {
       setSelectedNote(item.root ?? null);
       setSelectedQuality(item.quality ?? null);
       setBeats(item.beats);
+      if (item.root?.includes("b")) {
+        setUseFlats(true);
+      } else if (item.root?.includes("#")) {
+        setUseFlats(false);
+      }
     }
   }
 
@@ -278,7 +284,19 @@ export default function App() {
             selected={selectedNote}
             useFlats={useFlats}
             onSelect={setSelectedNote}
-            onToggleFlats={() => setUseFlats((f) => !f)}
+            onToggleFlats={() => {
+              setUseFlats((prev) => {
+                const next = !prev;
+                if (selectedNote) {
+                  if (next && ENHARMONIC_MAP[selectedNote]) {
+                    setSelectedNote(ENHARMONIC_MAP[selectedNote]);
+                  } else if (!next && FLAT_TO_SHARP[selectedNote]) {
+                    setSelectedNote(FLAT_TO_SHARP[selectedNote]);
+                  }
+                }
+                return next;
+              });
+            }}
           />
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

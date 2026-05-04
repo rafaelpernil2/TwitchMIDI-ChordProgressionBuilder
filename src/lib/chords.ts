@@ -23,6 +23,10 @@ export const ENHARMONIC_MAP: Record<string, string> = {
   "A#": "Bb",
 };
 
+export const FLAT_TO_SHARP: Record<string, string> = Object.fromEntries(
+  Object.entries(ENHARMONIC_MAP).map(([sharp, flat]) => [flat, sharp])
+);
+
 export const NOTE_TO_SEMITONE: Record<string, number> = {
   C: 0, "C#": 1, Db: 1,
   D: 2, "D#": 3, Eb: 3,
