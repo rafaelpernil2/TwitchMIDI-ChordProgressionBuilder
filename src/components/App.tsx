@@ -18,6 +18,14 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
+// Default beat duration = number of quarter notes ("black notes") per measure.
+// quarters = numerator * 4 / denominator (4/4→4, 3/4→3, 6/8→3, 12/8→6).
+// Non-integer signatures (e.g. 7/8 → 3.5) fall back to 4.
+function defaultBeatsFor({ numerator, denominator }: TimeSignature): number {
+  const quarters = (numerator * 4) / denominator;
+  return Number.isInteger(quarters) && quarters > 0 ? quarters : 4;
+}
+
 export default function App() {
   const [locale, setLocale] = useState<Locale>("en");
   const t = getTranslations(locale);
@@ -67,7 +75,7 @@ export default function App() {
   }, []);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
-  const [beats, setBeats] = useState(4);
+  const [beats, setBeats] = useState(defaultBeatsFor(timeSignature));
   const [useFlats, setUseFlats] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -219,6 +227,14 @@ export default function App() {
     setIsPlaying(false);
   }
 
+  function handleTimeSignatureChange(ts: TimeSignature) {
+    setTimeSignature(ts);
+    // Reset beat duration to the measure default, unless mid-edit of an item.
+    if (editingIndex === null) {
+      setBeats(defaultBeatsFor(ts));
+    }
+  }
+
   function handleCommandChange(command: string) {
     const result = parseSendloop(command);
     if (result) {
@@ -250,7 +266,7 @@ export default function App() {
 
         {/* Time Signature */}
         <section class="bg-[#12121e] rounded-2xl p-5 border border-violet-500/10 shadow-lg shadow-violet-500/5">
-          <TimeSignatureSelector value={timeSignature} onChange={setTimeSignature} />
+          <TimeSignatureSelector value={timeSignature} onChange={handleTimeSignatureChange} />
         </section>
 
         {/* Chord Builder */}
